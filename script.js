@@ -211,7 +211,7 @@ function handleAddEntry() {
     };
 
     if (isDuplicateEntry(newEntry)) {
-        showErrorMessage("Duplicate entry: same location recently added.");
+
         return;
     }
 
@@ -331,3 +331,51 @@ function getDistanceInMeters(coord1, coord2) {
 //     }, { enableHighAccuracy: true });
 // }
 
+
+  const daysWithData = ['2025-05-03', '2025-05-12', '2025-05-25']; // sample entries
+  let currentDate = new Date();
+
+  function renderCalendar(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const monthYear = document.getElementById('monthYear');
+    const container = document.getElementById('calendarDays');
+
+    monthYear.textContent = date.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+    container.innerHTML = '';
+
+    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Add blank spaces for alignment
+    for (let i = 0; i < firstDay; i++) {
+      container.innerHTML += `<div></div>`;
+    }
+
+    // Render days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const fullDate = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const div = document.createElement('div');
+      div.textContent = d;
+      if (daysWithData.includes(fullDate)) div.classList.add('dot');
+      div.addEventListener('click', () => {
+        document.querySelectorAll('.calendar-grid div').forEach(el => el.classList.remove('selected'));
+        div.classList.add('selected');
+        // You can show the entry here if needed
+        console.log("Selected date:", fullDate);
+      });
+      container.appendChild(div);
+    }
+  }
+
+  // Button Events
+  document.getElementById('prevMonth').onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate);
+  };
+  document.getElementById('nextMonth').onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate);
+  };
+
+  renderCalendar(currentDate);

@@ -271,3 +271,59 @@ button:disabled {
     font-size: 24px; /* Adjust emoji size */
     text-shadow: 0 0 3px #00000080;
 }
+
+.calendar-container {
+  width: 300px;
+  font-family: sans-serif;
+  background: white;
+  border-radius: 10px;
+    justify-content: center;      /* centers horizontally */
+  align-items: center; 
+  padding: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  display: grid;
+    
+}
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.calendar-grid div {
+  padding: 10px;
+  text-align: center;
+  border-radius: 5px;
+  position: relative;
+  cursor: pointer;
+}
+.calendar-grid .dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #448aff;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.calendar-grid .selected {
+  background: #448aff;
+  color: white;
+}
+
+.calendar-wrapper {
+  display: flex;
+  justify-content: center;      /* centers horizontally */
+  align-items: center;          /* centers vertically */
+  min-height: 100vh;            /* full screen height */
+  background-color: #f4f4f4;
+  opacity: 0.7;    /* optional: soft background */
+}
