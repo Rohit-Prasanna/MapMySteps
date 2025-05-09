@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Location - Area Name</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([0, 0], 2);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Geolocation
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        // Center map and add marker
+        map.setView([lat, lng], 15);
+        const marker = L.marker([lat, lng]).addTo(map);
+
+        // Reverse geocoding using Nominatim
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+          .then(response => response.json())
+          .then(data => {
+            const displayName = data.address.city || data.address.town || data.address.village || data.address.hamlet || data.display_name;
+            marker.bindPopup(`You are in <strong>${displayName}</strong>`).openPopup();
+          })
+          .catch(error => {
+            console.error("Reverse geocoding failed:", error);
+            marker.bindPopup("You are here, but area name couldn't be fetched").openPopup();
+          });
+      },
+      error => {
+        console.error('Geolocation error:', error);
+        alert('Unable to retrieve your location.');
+      },
+      { enableHighAccuracy: true }
+    );
+  </script>
+
+</body>
+</html>
