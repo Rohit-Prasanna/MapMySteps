@@ -1,15 +1,11 @@
 // --- State ---
-let journalEntries = []; // Array to hold { id, timestamp, coordinates, address, notes, photoUrl }
-let currentLocation = null; // { latitude, longitude }
-let map; // Leaflet map instance
-let currentPositionMarker; // Leaflet marker for current position
+let journalEntries = [];
+let currentLocation = null;
+let map;
+let currentPositionMarker;
 
 // --- DOM Elements ---
 let mapContainerElement;
-let addEntryFormElement;
-let notesInputElement;
-let photoInputElement;
-let photoPreviewElement;
 let entriesListElement;
 let currentLocationDisplayElement;
 let errorDisplayElement;
@@ -24,12 +20,7 @@ const INITIAL_ZOOM_CURRENT_LOCATION = 15;
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Get DOM elements
     mapContainerElement = document.getElementById('map');
-    addEntryFormElement = document.getElementById('addEntryForm');
-    notesInputElement = document.getElementById('notes');
-    photoInputElement = document.getElementById('photo');
-    photoPreviewElement = document.getElementById('photoPreview');
     entriesListElement = document.getElementById('entriesList');
     currentLocationDisplayElement = document.getElementById('currentLocationDisplay');
     errorDisplayElement = document.getElementById('errorDisplay');
@@ -37,45 +28,40 @@ document.addEventListener('DOMContentLoaded', () => {
     addEntryButtonElement = document.getElementById('addEntryButton');
     requestPermissionButtonElement = document.getElementById('requestPermissionButton');
 
-    // Initialize map
     initMap();
-
-    // Get initial location
     requestLocationPermission();
 
-    // Setup event listeners
-    addEntryFormElement.addEventListener('submit', handleAddEntry);
-    photoInputElement.addEventListener('change', handlePhotoPreview);
-    if (requestPermissionButtonElement) {
-      requestPermissionButtonElement.addEventListener('click', requestLocationPermission);
+    if (addEntryButtonElement) {
+        addEntryButtonElement.addEventListener('click', handleAddEntry);
     }
 
-    // Load entries from localStorage
+    if (requestPermissionButtonElement) {
+        requestPermissionButtonElement.addEventListener('click', requestLocationPermission);
+    }
+
     loadEntriesFromLocalStorage();
     renderJournalEntries();
     updateMapMarkers();
 });
 
-// --- LocalStorage Persistence ---
+// --- LocalStorage ---
 function saveEntriesToLocalStorage() {
     try {
         localStorage.setItem('geoJournalEntries', JSON.stringify(journalEntries));
     } catch (e) {
         console.error("Error saving to localStorage:", e);
-        showErrorMessage("Could not save entries. LocalStorage might be full or disabled.");
+        showErrorMessage("Could not save entries.");
     }
 }
 
 function loadEntriesFromLocalStorage() {
     try {
-        const storedEntries = localStorage.getItem('geoJournalEntries');
-        if (storedEntries) {
-            journalEntries = JSON.parse(storedEntries);
-        }
+        const stored = localStorage.getItem('geoJournalEntries');
+        if (stored) journalEntries = JSON.parse(stored);
     } catch (e) {
         console.error("Error loading from localStorage:", e);
-        journalEntries = []; // Reset if parsing fails
-        showErrorMessage("Could not load previous entries. Data might be corrupted.");
+        journalEntries = [];
+        showErrorMessage("Could not load entries.");
     }
 }
 
@@ -83,7 +69,7 @@ function loadEntriesFromLocalStorage() {
 function initMap() {
     map = L.map(mapContainerElement).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
     }).addTo(map);
 }
@@ -99,14 +85,12 @@ function updateMapCenter(zoomLevel = DEFAULT_ZOOM) {
 }
 
 function updateMapMarkers() {
-    // Clear existing markers (except current position)
     map.eachLayer(layer => {
         if (layer instanceof L.Marker && layer !== currentPositionMarker) {
             map.removeLayer(layer);
         }
     });
 
-    // Add/Update current location marker
     if (currentLocation) {
         const currentLatLng = [currentLocation.latitude, currentLocation.longitude];
         if (currentPositionMarker) {
@@ -114,30 +98,21 @@ function updateMapMarkers() {
         } else {
             currentPositionMarker = L.marker(currentLatLng, {
                 icon: L.divIcon({
-                    html: '📍', // Simple pin emoji
-                    className: 'current-location-icon', // For potential specific styling
+                    html: '📍',
+                    className: 'current-location-icon',
                     iconSize: [24, 24],
-                    iconAnchor: [12, 24], // Anchor point of the icon
-                    popupAnchor: [0, -24] // Popup anchor relative to iconAnchor
+                    iconAnchor: [12, 24],
+                    popupAnchor: [0, -24]
                 })
             }).addTo(map);
             currentPositionMarker.bindPopup("<b>Your current location</b>");
         }
     }
 
-    // Add journal entry markers
     journalEntries.forEach(entry => {
         const entryLatLng = [entry.coordinates.latitude, entry.coordinates.longitude];
         const marker = L.marker(entryLatLng).addTo(map);
-        
-        let popupContent = `<b>${entry.address || 'Location Entry'}</b><br>${new Date(entry.timestamp).toLocaleString()}`;
-        if (entry.notes) {
-            const truncatedNotes = entry.notes.length > 100 ? entry.notes.substring(0, 100) + '...' : entry.notes;
-            popupContent += `<br><em>${truncatedNotes.replace(/\n/g, '<br>')}</em>`;
-        }
-        if (entry.photoUrl) {
-            popupContent += `<br><img src="${entry.photoUrl}" alt="Entry photo" style="width:100px; height:auto; margin-top:5px; border-radius:3px;">`;
-        }
+        const popupContent = `<b>${entry.address || 'Location Entry'}</b><br>${new Date(entry.timestamp).toLocaleString()}`;
         marker.bindPopup(popupContent);
     });
 }
@@ -151,11 +126,11 @@ function requestLocationPermission() {
 
         navigator.geolocation.watchPosition(handleLocationSuccess, handleLocationError, {
             enableHighAccuracy: true,
-            timeout: 15000, // Increased timeout
-            maximumAge: 0  // Force fresh location
+            timeout: 15000,
+            maximumAge: 0
         });
     } else {
-        showErrorMessage("Geolocation is not supported by your browser.");
+        showErrorMessage("Geolocation not supported.");
         hideLoadingMessage();
     }
 }
@@ -180,176 +155,179 @@ function handleLocationSuccess(position) {
         updateMapCenter(isFirstFix ? INITIAL_ZOOM_CURRENT_LOCATION : map.getZoom());
         updateMapMarkers();
 
-        // Reverse geocode for area name
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLocation.latitude}&lon=${currentLocation.longitude}`)
             .then(res => res.json())
             .then(data => {
                 const name = data.address.city || data.address.town || data.address.village || data.address.hamlet || data.display_name;
                 currentLocationDisplayElement.textContent = `📍 ${name}`;
-                currentLocation.address = name; // Add address field to currentLocation
-                addEntryButtonElement.disabled = false;
+                currentLocation.address = name;
+                handleAddEntry();
+
             })
             .catch(err => {
                 console.error("Reverse geocoding failed:", err);
                 currentLocationDisplayElement.textContent = `Lat: ${currentLocation.latitude.toFixed(4)}, Lon: ${currentLocation.longitude.toFixed(4)}`;
-                addEntryButtonElement.disabled = false;
+
+                handleAddEntry();
+
             });
     }
 }
 
 function handleLocationError(error) {
     hideLoadingMessage();
-    let message = "Error fetching location: ";
+    let message = "Location error: ";
     switch (error.code) {
         case error.PERMISSION_DENIED:
-            message += "Permission denied. Please enable location services in your browser settings.";
+            message += "Permission denied.";
             if (requestPermissionButtonElement) requestPermissionButtonElement.style.display = 'inline-block';
             break;
         case error.POSITION_UNAVAILABLE:
-            message += "Location information is unavailable at the moment.";
+            message += "Position unavailable.";
             break;
         case error.TIMEOUT:
-            message += "The request to get user location timed out.";
+            message += "Timeout getting location.";
             break;
         default:
-            message += "An unknown error occurred.";
-            break;
+            message += "Unknown error.";
     }
     showErrorMessage(message);
     addEntryButtonElement.disabled = true;
 }
 
-// --- Journal Entry Functions ---
-function handleAddEntry(event) {
-    event.preventDefault();
+// --- Journal Entry Logic ---
+function handleAddEntry() {
     if (!currentLocation) {
-        showErrorMessage("Current location not available. Cannot add entry.");
+        showErrorMessage("Current location not available.");
         return;
     }
-
-    const notes = notesInputElement.value.trim();
-    const photoFile = photoInputElement.files[0]; // This is used to check if a photo was selected
-
-    // Photo URL is derived from the preview source which is set by handlePhotoPreview
-    const photoUrl = (photoPreviewElement.src && photoPreviewElement.src !== document.location.href + "#" && photoPreviewElement.style.display !== 'none') 
-                     ? photoPreviewElement.src 
-                     : null;
-
-    if (!notes && !photoUrl) {
-        showErrorMessage("Please add notes or a photo to create an entry.");
-        return;
-    }
+    
 
     const newEntry = {
         id: Date.now().toString(),
         timestamp: Date.now(),
         coordinates: { ...currentLocation },
-        address: currentLocation.address || "Unnamed location",
-
-        notes: notes,
-        photoUrl: photoUrl
+        address: currentLocation.address || "Unnamed location"
     };
 
-    journalEntries.unshift(newEntry); // Add to the beginning of the array
+    if (isDuplicateEntry(newEntry)) {
+        showErrorMessage("Duplicate entry: same location recently added.");
+        return;
+    }
+
+    journalEntries.unshift(newEntry);
     saveEntriesToLocalStorage();
     renderJournalEntries();
-    updateMapMarkers(); // Update map with the new entry
-
-    // Reset form
-    addEntryFormElement.reset(); // Resets text inputs and file input
-    photoPreviewElement.src = '#'; // Clear preview
-    photoPreviewElement.style.display = 'none';
-    notesInputElement.focus();
-}
-
-function handlePhotoPreview() {
-    const file = photoInputElement.files[0];
-    if (file) {
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
-            showErrorMessage("Photo size exceeds 5MB limit. Please choose a smaller file.");
-            photoInputElement.value = ""; // Clear the file input
-            photoPreviewElement.src = '#';
-            photoPreviewElement.style.display = 'none';
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            photoPreviewElement.src = e.target.result;
-            photoPreviewElement.style.display = 'block';
-        }
-        reader.onerror = () => {
-            showErrorMessage("Error reading photo file.");
-            photoPreviewElement.src = '#';
-            photoPreviewElement.style.display = 'none';
-        }
-        reader.readAsDataURL(file);
-    } else {
-        photoPreviewElement.src = '#';
-        photoPreviewElement.style.display = 'none';
-    }
+    updateMapMarkers();
 }
 
 function renderJournalEntries() {
-    entriesListElement.innerHTML = ''; // Clear existing entries
+    entriesListElement.innerHTML = '';
     if (journalEntries.length === 0) {
-        entriesListElement.innerHTML = '<p class="muted">No entries yet. Add your first one!</p>';
+        entriesListElement.innerHTML = '<p class="muted">No entries yet.</p>';
         return;
     }
 
     journalEntries.forEach(entry => {
-        const entryCard = document.createElement('div');
-        entryCard.className = 'entry-card';
-
-        let photoHtml = '';
-        if (entry.photoUrl) {
-            // Use the existing data-ai-hint from the previous React component
-            photoHtml = `<img src="${entry.photoUrl}" alt="${entry.notes || 'Journal photo'}" data-ai-hint="travel landscape">`;
-        }
-
-        let notesHtml = '';
-        if (entry.notes) {
-            // Sanitize notes slightly by replacing < and > to prevent basic HTML injection
-            const sanitizedNotes = entry.notes.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            notesHtml = `<p><strong>Notes:</strong> ${sanitizedNotes.replace(/\n/g, '<br>')}</p>`;
-        }
-        
-        const addressDisplay = entry.address || `${entry.coordinates.latitude.toFixed(4)}, ${entry.coordinates.longitude.toFixed(4)}`;
-
-        entryCard.innerHTML = `
-            <h4>${addressDisplay}</h4>
+        const card = document.createElement('div');
+        card.className = 'entry-card';
+        const address = entry.address || `${entry.coordinates.latitude.toFixed(4)}, ${entry.coordinates.longitude.toFixed(4)}`;
+        card.innerHTML = `
+            <h4>${address}</h4>
             <p class="timestamp">${new Date(entry.timestamp).toLocaleString()}</p>
-            ${photoHtml}
-            ${notesHtml}
-            ${!entry.notes && !entry.photoUrl ? '<p class="muted"><em>No notes or photo for this entry.</em></p>' : ''}
         `;
-        entriesListElement.appendChild(entryCard);
+        entriesListElement.appendChild(card);
     });
 }
 
-// --- UI Helper Functions ---
-function showErrorMessage(message) {
+// --- UI Helpers ---
+function showErrorMessage(msg) {
     if (errorDisplayElement) {
-        errorDisplayElement.textContent = message;
+        errorDisplayElement.textContent = msg;
         errorDisplayElement.style.display = 'block';
     }
-    console.error(message); // Also log to console
+    console.error(msg);
 }
 
 function hideErrorMessage() {
-    if (errorDisplayElement) {
-        errorDisplayElement.style.display = 'none';
-    }
+    if (errorDisplayElement) errorDisplayElement.style.display = 'none';
 }
 
-function showLoadingMessage(message) {
+function showLoadingMessage(msg) {
     if (loadingDisplayElement) {
-        loadingDisplayElement.textContent = message;
+        loadingDisplayElement.textContent = msg;
         loadingDisplayElement.style.display = 'block';
     }
 }
 
 function hideLoadingMessage() {
-    if (loadingDisplayElement) {
-        loadingDisplayElement.style.display = 'none';
-    }
+    if (loadingDisplayElement) loadingDisplayElement.style.display = 'none';
 }
+
+function isDuplicateEntry(newEntry) {
+    const TIME_WINDOW_MS = 600 * 1000;
+    const DISTANCE_THRESHOLD_METERS = 100;
+
+    return journalEntries.some(entry => {
+        const timeDiff = Math.abs(entry.timestamp - newEntry.timestamp);
+        const distance = getDistanceInMeters(entry.coordinates, newEntry.coordinates);
+        return timeDiff <= TIME_WINDOW_MS && distance <= DISTANCE_THRESHOLD_METERS;
+    });
+}
+
+
+function getDistanceInMeters(coord1, coord2) {
+    const R = 6371000; // Earth radius in meters
+    const toRad = deg => deg * Math.PI / 180;
+
+    const lat1 = coord1.latitude;
+    const lon1 = coord1.longitude;
+    const lat2 = coord2.latitude;
+    const lon2 = coord2.longitude;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+}
+
+// async function handleAddEntry() {
+//     if (!navigator.geolocation) {
+//         showErrorMessage("Geolocation is not supported by your browser.");
+//         return;
+//     }
+
+//     navigator.geolocation.getCurrentPosition(async position => {
+//         const { latitude, longitude } = position.coords;
+
+//         try {
+//             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+//             const data = await response.json();
+
+//             const locality = data.address.city || data.address.town || data.address.village || data.address.suburb || "Unknown area";
+
+//             const newEntry = {
+//                 id: Date.now().toString(),
+//                 timestamp: Date.now(),
+//                 locality
+//             };
+
+//             journalEntries.push(newEntry);
+//             localStorage.setItem('journalEntries', JSON.stringify(journalEntries));
+//             renderJournalEntries();
+//             updateMapMarkers();
+
+//         } catch (error) {
+//             showErrorMessage("Failed to fetch locality. Try again.");
+//         }
+//     }, () => {
+//         showErrorMessage("Unable to retrieve your location.");
+//     }, { enableHighAccuracy: true });
+// }
+
